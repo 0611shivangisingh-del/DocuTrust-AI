@@ -1,0 +1,6 @@
+{
+  "name": "DocuTrust AI",
+  "description": "Document forensics, tamper verification, and multilingual legal document simplifier with explainable trust scores and clause-grounded risk analysis.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

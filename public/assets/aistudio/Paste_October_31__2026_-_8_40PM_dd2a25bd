@@ -1,0 +1,430 @@
+# DocuTrust AI: Product Requirements Document
+
+**Version:** 1.0 (build-ready draft)  |  **Date:** 31 October 2026  |  **Platform:** Web app, mobile-first and responsive
+
+## 1. Product Overview
+
+DocuTrust AI helps people and institutions answer two questions about important documents:
+
+1. **Can I trust this document?** Upload a marks card, Aadhaar, PAN card, certificate or bank statement. Get a Trust Score, highlighted suspicious regions and a plain-language verification report in about 30 seconds.
+2. **Do I understand what I am signing?** Upload a legal document. Get a simple summary, key clauses, risk flags and a translation into your own language, with audio and a chat to ask questions.
+
+**Positioning:** DocuTrust AI is decision support, not legal proof. It flags evidence of editing and explains it. Final verification still rests with the issuing authority.
+
+**Tagline options:** “Trust every document.” or “Verify. Understand. Decide.”
+
+## 2. Problem Statement
+
+- Editing software makes it easy to alter marks cards, Aadhaar cards, PAN cards, certificates and bank statements.
+- Manual checking is slow, inconsistent and needs expertise, while colleges, banks, HR teams, government offices and law firms handle hundreds of documents a day.
+- Legal documents are written in dense jargon. Most are in English, while many users read only a regional language, so people sign things they do not understand.
+
+**Opportunity:** Combine image and PDF forensics, rule-based validation and AI language models in one calm, simple product that serves both the verifier and the ordinary citizen.
+
+## 3. Goals, Non-Goals and Success Metrics
+
+### Goals
+
+- **G1.** Detect likely modifications in common Indian documents and explain them visually and in words.
+- **G2.** Make legal documents understandable in simple language and in the user’s own language.
+- **G3.** Deliver a minimalist, fast, trustworthy experience that a first-time user can use without instructions.
+- **G4.** Offer an API so institutions can plug verification into their own workflows.
+
+### Non-Goals (v1)
+
+- Not a replacement for official portals (UIDAI, Income Tax/NSDL, DigiLocker, university verification).
+- Not legal advice. No lawyer-client relationship is created.
+- No face matching, liveness or full KYC.
+- Full Aadhaar numbers are never stored.
+
+### Success Metrics
+
+| Metric | Target |
+| --- | --- |
+| Tamper detection recall on internal test set | 85% or higher at false-positive rate of 10% or lower |
+| Time to first result (single-page image, p90) | 30 seconds or less |
+| Legal summary time (20 pages, p90) | 45 seconds or less |
+| First-time users completing a verification unaided | 90% or higher |
+| Usability score (SUS) | 80 or higher |
+| Summary helpfulness rating | 4.3 out of 5 or higher |
+| Translations rated acceptable by native-speaker reviewers | 90% or higher |
+
+## 4. Target Users and Personas
+
+| Persona | Context | Core need |
+| --- | --- | --- |
+| **Ananya, admissions or HR officer** | Checks 100+ marks cards and certificates a week | Fast, bulk, defensible screening with a report to file |
+| **Rakesh, bank or NBFC loan officer** | Reviews bank statements, PAN and Aadhaar copies | Catch edited statements and invalid ID numbers quickly |
+| **Meena, first-time renter** | Reads only Tamil comfortably; has a 14-page rental agreement in English | Know what she is agreeing to, in Tamil, before signing |
+| **Iyer, junior at a small law firm** | Reviews contracts and affidavits daily | Clause extraction, risk flags and a first-pass summary |
+| **Arjun, student or job seeker** | Wants to prove his own documents are genuine | A shareable verification link he can send to employers |
+
+## 5. Feature Map
+
+### P0: MVP
+
+- Guest and signed-in upload (JPG, PNG, PDF; camera capture on mobile)
+- Automatic document type detection
+- Tamper analysis engine with Trust Score, verdict and heatmap
+- Field-level validation for Aadhaar, PAN, marks card and bank statement
+- Verification report (PDF download)
+- Legal Simplifier: summary, key terms, clause list, risk flags, glossary
+- Translation and reading in English, Hindi, Tamil, Telugu and Bengali
+- History (last 30 days) for signed-in users
+- Auto-delete and privacy controls
+- Light and dark themes, full animation system
+
+### P1: Version 1.1
+
+- Ask-the-Document chat with clause citations
+- Audio read-aloud (text to speech) in all supported languages
+- Compare mode (original vs suspect document)
+- Shareable verification link with expiry
+- Bulk upload (up to 25 files) and batch report
+- Sensitive-data redaction tool (mask Aadhaar and account numbers before sharing)
+- Languages expanded to 12 or more Indian languages
+- Public REST API with API keys
+
+### P2: Later
+
+- Organization workspace with roles, audit log and analytics
+- QR and digital signature deep verification, DigiLocker integration where official APIs permit
+- Hash-anchored tamper-evident records (optional)
+- WhatsApp bot for check and explain
+- Fine-tuned ML tamper-localization model
+- “Before you sign” checklist generator and template library
+
+## 6. Functional Requirements
+
+### 6.1 Home and Onboarding
+
+- **FR-H1.** Home shows two large, equal cards: **Verify a document** and **Understand a document**. No account is needed to try either.
+- **FR-H2.** A single line under each card sets expectations (for example, “Takes about 30 seconds. Your file is deleted after the check.”).
+- **FR-H3.** First visit shows a three-step, skippable intro (Upload, Analyze, Decide) using subtle motion, not a long tutorial.
+- **FR-H4.** Language picker is always visible in the top bar and remembers the choice.
+
+### 6.2 Upload and Capture
+
+- **FR-U1.** Drag and drop, file picker, paste, and mobile camera capture with edge detection and glare warning.
+- **FR-U2.** Accepted formats: JPG, PNG, WEBP, HEIC, PDF (up to 20 MB, 30 pages for verification; 100 pages for legal).
+- **FR-U3.** Client-side checks before upload: file type, size, blur and resolution, with friendly guidance (for example, “Image looks blurry. Retake for a more accurate result.”).
+- **FR-U4.** Upload progress with cancel. Original file is never modified; analysis works on a copy.
+- **FR-U5.** User confirms or changes the auto-detected document type before analysis.
+
+### 6.3 Document Classification
+
+- **FR-C1.** Classify as: Aadhaar, PAN, Marks card or transcript, Certificate, Bank statement, Legal agreement, Other.
+- **FR-C2.** Use layout cues, keywords (OCR) and a lightweight classifier. Show confidence; if below threshold, ask the user.
+
+### 6.4 Tamper Analysis Engine
+
+The engine runs independent modules in parallel. Each returns a score, a confidence and human-readable findings with image coordinates.
+
+| Module | What it checks | Applies to |
+| --- | --- | --- |
+| **Pixel forensics** | Error Level Analysis, noise inconsistency, JPEG double-compression and block-grid mismatch, copy-move detection (duplicated regions) | Images, scanned PDFs |
+| **Metadata and file structure** | EXIF software tags (editors), creation vs modification dates, PDF producer, incremental updates, object history, embedded fonts and layers | Images, PDFs |
+| **Text and font consistency** | OCR each text region, compare font, size, kerning, baseline, color and background patch against neighbors; flag pasted digits | All |
+| **Layout and template match** | Compare against known issuer templates (position of logo, seal, fields, margins) | Aadhaar, PAN, common boards and universities |
+| **Field validation (rules)** | Aadhaar: 12 digits and Verhoeff checksum. PAN: format AAAAA9999A and valid 4th-character entity code. Marks card: subject totals, percentage and grade consistency. Bank statement: opening balance + credits − debits = closing balance on every row, date order, duplicated or misaligned rows | Per document type |
+| **QR and barcode cross-check** | Decode QR or barcode and compare with printed text; verify digital signature where present | Aadhaar Secure QR, certificates with QR |
+| **Signature and seal region check** | Detects pasted or resampled signature and seal areas by resolution and noise mismatch | Certificates, marks cards |
+
+**Engine requirements**
+
+- **FR-T1.** Run modules asynchronously and stream progress to the UI by stage.
+- **FR-T2.** Each finding includes: severity (Info, Warning, Critical), plain-language explanation, and bounding box.
+- **FR-T3.** Handle low-quality input gracefully. If a screenshot, heavy compression or a re-saved JPEG makes forensics unreliable, return **Inconclusive** with reasons, never a false verdict.
+- **FR-T4.** Be explicit about limits: a high score does not guarantee authenticity.
+
+### 6.5 Trust Score and Verdict
+
+- **FR-S1.** Score from 0 to 100 (higher is more trustworthy) plus a **confidence** level (Low, Medium, High).
+- **FR-S2.** Verdict bands: **80 to 100: Looks authentic**, **50 to 79: Needs review**, **0 to 49: Likely tampered**, plus **Inconclusive**.
+- **FR-S3.** Hard-fail rules cap the score at 40 regardless of other modules: invalid Aadhaar checksum, QR data mismatching printed text, broken digital signature, bank statement arithmetic failure.
+- **FR-S4.** Show a “Why this score?” panel listing the top contributing findings.
+
+### 6.6 Verification Result Screen
+
+- **FR-R1.** Animated Trust Score ring and one-sentence verdict at the top.
+- **FR-R2.** Document viewer with a toggleable **heatmap overlay** and numbered pins on suspicious regions. Tap a pin to see the finding.
+- **FR-R3.** Findings list grouped by severity, each with a “What this means” explanation and a “What to do next” suggestion (for example, “Request the original from the issuing institution”).
+- **FR-R4.** Extracted fields table (name, number, dates, totals) with validation tick or warning icons. Sensitive numbers are masked by default (show last 4 digits) with tap to reveal.
+- **FR-R5.** Actions: Download report, Share link, Compare with another file, Re-run, Delete now.
+
+### 6.7 Verification Report and Sharing
+
+- **FR-P1.** PDF report: document thumbnail, verdict, score, findings with annotated images, methodology summary, timestamp, a unique report ID and a disclaimer.
+- **FR-P2.** Shareable read-only link with expiry (24 hours, 7 days, 30 days) and optional passcode. Link shows the report only, never the original unless the owner allows it.
+- **FR-P3.** Report includes a SHA-256 hash of the analyzed file so a recipient can confirm it was the same file.
+
+### 6.8 Legal Document Simplifier
+
+- **FR-L1.** Inputs: PDF, scanned image, DOCX or pasted text. OCR for scans, including Indian-language scripts.
+- **FR-L2.** Outputs, in this order:
+  - **In short:** summary of 100 words or fewer
+  - **What you are agreeing to:** obligations of each party in simple bullets
+  - **Key facts:** parties, dates, amounts, duration, renewal, notice period, penalties, jurisdiction
+  - **Risk flags:** Red, Amber and Green items, each tied to a clause number with a one-line reason (for example, “Landlord may increase rent any time without notice”)
+  - **Questions to ask before signing**
+  - **Glossary:** jargon terms with tap-to-explain tooltips inside the original text
+- **FR-L3.** **Reading level toggle:** Simple, Standard, Detailed.
+- **FR-L4.** **Side-by-side view:** original clause on one side, plain-language version on the other. Mobile uses an accordion.
+- **FR-L5.** **Ask the Document (P1):** chat answers only from the uploaded document, quotes the clause it relied on, and says “I could not find this in the document” when it cannot answer.
+- **FR-L6.** Supported types for tuned prompts: rental agreement, loan agreement, employment contract, NDA, terms of service, sale deed, affidavit, insurance policy.
+- **FR-L7.** Guardrails: standing disclaimer, no outcome predictions, no instruction to sign or not sign.
+
+### 6.9 Multilingual and Voice
+
+- **FR-M1.** Output language can be changed instantly without re-uploading. UI chrome is also localized.
+- **FR-M2.** MVP languages: English, Hindi, Tamil, Telugu, Bengali. P1 adds Marathi, Gujarati, Kannada, Malayalam, Punjabi, Odia, Urdu.
+- **FR-M3.** Legal terms keep the original English term in brackets the first time (for example, “indemnity (indemnity)”) so users can match it to the paper.
+- **FR-M4.** Audio read-aloud with speed control and sentence highlighting (P1).
+- **FR-M5.** Voice input for questions in Ask the Document (P1).
+- **FR-M6.** Use Noto Sans family fonts for all Indic scripts and test line-breaking.
+
+### 6.10 Compare Mode (P1)
+
+- **FR-X1.** Upload an original and a suspect copy. Auto-align, then show a slider or difference overlay highlighting changed regions and changed text.
+- **FR-X2.** Output a text diff of extracted fields (for example, “Total changed from 412 to 472”).
+
+### 6.11 History and Vault
+
+- **FR-V1.** Signed-in users see past checks with thumbnail, verdict, date and type. Search and filter.
+- **FR-V2.** Retention options: Delete after analysis (default), 24 hours, 30 days. Report data can outlive the file if the user chooses.
+- **FR-V3.** One-tap “Delete everything” and data export.
+
+### 6.12 Privacy and Redaction Tools (P1)
+
+- **FR-D1.** Auto-detect Aadhaar, PAN, account and phone numbers and offer one-tap masking before sharing or downloading.
+- **FR-D2.** Consent screen explains what is processed, which third-party APIs see content, and retention. Plain language, no dark patterns.
+
+### 6.13 Organization Mode and API (P1 and P2)
+
+- **FR-O1.** API keys, usage dashboard, webhooks for async results.
+- **FR-O2.** Workspaces with roles (Admin, Reviewer, Viewer), shared history, audit log and CSV export.
+- **FR-O3.** Configurable thresholds and custom issuer templates.
+- **FR-O4.** Batch upload with a table view sorted by risk.
+
+### 6.14 Admin Console
+
+- User and usage metrics, queue health, module accuracy dashboards, template management, abuse reports, and feedback review.
+
+## 7. UX and Design Specification
+
+### 7.1 Design Principles
+
+1. **Calm, not clinical.** Lots of whitespace, one primary action per screen.
+2. **Explain, do not just score.** Every number has a reason in plain words.
+3. **Show, do not tell.** Highlights on the document beat paragraphs of text.
+4. **Progressive disclosure.** Summary first; technical detail one tap away.
+5. **Trust through transparency.** State limits, state privacy, no hidden steps.
+6. **Mobile first.** Thumb-reachable actions, camera capture, bottom sheets.
+
+### 7.2 Visual System
+
+- **Color:** background #FAFAF9, surface #FFFFFF, ink #111827, muted #6B7280, single accent teal #0F766E. Status colors used only for verdicts: green #16A34A, amber #D97706, red #DC2626. Dark theme with #0B0F14 background.
+- **Typography:** Inter for UI, Noto Sans for Indic scripts, JetBrains Mono for IDs and hashes. Scale: 14, 16, 20, 28, 40.
+- **Layout:** 8-pt grid, 16 px radius on cards, soft 1 px borders instead of heavy shadows, generous padding.
+- **Iconography:** one consistent line-icon set (Lucide), 1.5 px stroke.
+- **Illustrations:** none or minimal; the document itself is the hero.
+
+### 7.3 Motion Spec
+
+Motion should feel smooth and purposeful, never decorative. Use Framer Motion. Easing: cubic-bezier(0.22, 1, 0.36, 1). Durations 150 to 400 ms except where noted.
+
+| Moment | Animation |
+| --- | --- |
+| Page transitions | Fade plus 8 px upward slide, 250 ms |
+| Upload dropzone | Border softly pulses on drag-over; file card springs in |
+| **Analysis in progress** | A thin teal scan line sweeps over the document preview while a vertical stepper (Reading, Checking pixels, Validating fields, Scoring) ticks off each stage with a small check animation |
+| **Trust Score reveal** | Ring draws from 0 to the score with number count-up over about 900 ms, then verdict text fades in |
+| Heatmap | Fades in over 400 ms; pins pop in with a staggered 60 ms delay |
+| Legal result | Sections reveal in sequence as the user scrolls; risk flags slide in from the side |
+| Language switch | Text cross-fades (200 ms), layout does not jump |
+| Buttons and cards | 2 px lift and subtle scale (1.01) on hover and press |
+| Loading | Skeleton shimmer instead of spinners |
+| Success | One short Lottie check on report download or share |
+
+**Rules:** respect prefers-reduced-motion by replacing movement with simple fades; keep animation at 60 fps; never block the user behind an animation.
+
+### 7.4 Key Screens
+
+1. **Landing page:** headline, two-line value statement, two primary buttons (Verify, Understand), a short looping demo of the scan animation, a privacy strip, supported documents, FAQ.
+2. **App home:** two large cards, recent activity below.
+3. **Upload:** large dropzone, camera button on mobile, document type chips, privacy reminder.
+4. **Analysis:** scanning animation and stage stepper.
+5. **Verify result:** score ring, verdict, document viewer with heatmap toggle, findings accordion, extracted fields, action bar.
+6. **Legal result:** tabs for Summary, Clauses, Risks, Ask. Language and reading-level selector pinned at top.
+7. **Compare:** split or slider view with differences list.
+8. **History:** clean list with verdict dots.
+9. **Share page (public):** report-only, minimal, with a “Verified by DocuTrust AI” seal and report ID.
+10. **Settings and Privacy:** language, theme, retention, delete data.
+11. **Org dashboard (P2):** batch table, risk filters, audit log.
+
+### 7.5 Accessibility and Inclusion
+
+- WCAG 2.2 AA contrast; never rely on color alone (icons and labels for every verdict).
+- Full keyboard and screen-reader support; alt text for heatmap pins describing the issue.
+- Minimum 44 px touch targets; text resizable to 200%.
+- Plain language at about Grade 7 reading level for all UI copy.
+- Low-bandwidth mode: compress uploads on device and defer animations.
+
+## 8. Core User Flows
+
+**Verify:** Home > Verify > Upload (or camera) > Confirm type > Analysis animation > Result (score, heatmap, findings) > Download report or Share link > Optional delete.
+
+**Understand:** Home > Understand > Upload or paste > Choose language and reading level > Summary and risks > Open clause side-by-side > Ask a question > Listen or download summary.
+
+**Institution:** Sign in > Bulk upload > Sorted risk table > Open flagged item > Export report batch > Webhook or CSV to internal system.
+
+## 9. Technical Architecture
+
+### 9.1 Stack (recommended)
+
+| Layer | Choice |
+| --- | --- |
+| Frontend | Next.js (App Router), TypeScript, Tailwind CSS, shadcn/ui, Framer Motion, next-intl for localization, PWA support |
+| Backend API | FastAPI (Python) with async endpoints, Pydantic validation |
+| Workers | Celery or RQ with Redis for the analysis queue; WebSocket or Server-Sent Events for live progress |
+| Image and PDF processing | OpenCV, scikit-image, NumPy, Pillow, PyMuPDF, pikepdf, exiftool |
+| OCR | PaddleOCR or Tesseract with Indic language packs, or a cloud OCR API for hard scans |
+| LLM and language | Claude API for summarization, clause extraction, risk flags, translation and grounded Q&A, using structured JSON output; retrieval over document chunks for Ask the Document |
+| Speech | Cloud text-to-speech and speech-to-text API for Indian languages |
+| Database | PostgreSQL |
+| File storage | S3-compatible object storage with server-side encryption and lifecycle rules for auto-delete |
+| Auth | Email OTP and Google sign-in; JWT sessions |
+| Hosting | Vercel (frontend), containerized backend on AWS, GCP or Render; CDN for assets |
+| Observability | Sentry, OpenTelemetry, structured logs without document content |
+
+### 9.2 Processing Pipeline
+
+1. Upload to temporary encrypted storage and compute SHA-256 hash.
+2. Preprocess: normalize orientation, deskew, split PDF pages, extract embedded images and metadata.
+3. Classify document type.
+4. Run modules in parallel workers (forensics, metadata, text and font, layout, rules, QR).
+5. Aggregate with the scoring engine and generate findings, heatmap and extracted fields.
+6. Persist results (not the file, unless retained), stream final payload to the client.
+7. Generate PDF report on demand.
+
+For the Legal Simplifier: extract text, split into clauses, send chunks to the LLM with a strict JSON schema, assemble summary, translate on request, cache by document hash and language.
+
+## 10. API Design (v1)
+
+All endpoints are versioned under /v1 and secured by session or API key. Responses are JSON.
+
+| Endpoint | Purpose |
+| --- | --- |
+| POST /v1/documents | Upload a file; returns document ID |
+| POST /v1/verifications | Start tamper analysis for a document ID; returns job ID |
+| GET /v1/verifications/{id} | Status, score, verdict, findings, heatmap URL |
+| GET /v1/verifications/{id}/report | Download PDF report |
+| POST /v1/verifications/{id}/share | Create expiring share link |
+| POST /v1/compare | Compare two document IDs |
+| POST /v1/legal/summaries | Start legal summary with language and reading level |
+| GET /v1/legal/summaries/{id} | Summary, clauses, risks, glossary |
+| POST /v1/legal/summaries/{id}/ask | Ask a question; returns answer with clause citations |
+| POST /v1/legal/summaries/{id}/audio | Generate audio for a section |
+| DELETE /v1/documents/{id} | Delete file and derived data now |
+| POST /v1/webhooks | Register callback URL (organizations) |
+
+**Rate limits:** guests 5 checks a day; free accounts 30 a day; organizations by plan.
+
+## 11. Data Model (core entities)
+
+- **User:** id, email, language, theme, retention\_preference, created\_at
+- **Document:** id, owner, type, hash, storage\_key, pages, expires\_at
+- **Verification:** id, document\_id, score, confidence, verdict, module\_scores, status, created\_at
+- **Finding:** id, verification\_id, module, severity, message, page, bbox, evidence\_ref
+- **ExtractedField:** id, verification\_id, name, value\_masked, valid, rule
+- **LegalSummary:** id, document\_id, language, level, summary, key\_facts, clauses, risks, glossary
+- **ChatMessage:** id, summary\_id, role, text, cited\_clauses
+- **ShareLink:** id, verification\_id, token, expires\_at, passcode\_hash
+- **ApiKey, Workspace, Membership, AuditLog:** for organization mode
+
+## 12. Scoring Logic
+
+Initial weights (tune with test data):
+
+| Module group | Weight |
+| --- | --- |
+| Pixel forensics | 30% |
+| Field validation rules | 25% |
+| Text and font consistency | 20% |
+| Metadata and file structure | 15% |
+| Layout and template match | 10% |
+
+- Modules that do not apply (for example, template match on an unknown certificate) are dropped and weights renormalized.
+- Confidence is derived from image quality, number of applicable modules and agreement between them.
+- Hard-fail rules (FR-S3) override the weighted score.
+- If confidence is Low and the score is mid-range, return **Inconclusive** with a request for a better scan or the original file.
+
+## 13. Security, Privacy and Compliance
+
+- Compliance with India’s **Digital Personal Data Protection Act, 2023**: explicit consent, purpose limitation, right to erasure, grievance contact.
+- Follow UIDAI guidance: never store full Aadhaar numbers; mask by default; do not log them.
+- Encrypt in transit (TLS 1.2 or higher) and at rest; per-file keys where feasible.
+- Default retention is delete after analysis; background jobs purge expired files and verify deletion.
+- Third-party APIs (OCR, LLM, speech) called only with the minimum content needed, under data-processing terms that disallow training on user data.
+- No document content in logs or analytics. Access to stored files restricted and audited.
+- Abuse prevention: rate limits, CAPTCHA for guests, malware scan on uploads, and guard against users using the tool to refine forgeries (do not reveal exact detection thresholds or pixel-level hints; show regions and reasons only).
+- Clear disclaimers on every result and report.
+
+## 14. Non-Functional Requirements
+
+- **Performance:** Lighthouse performance 90 or higher on mobile; first contentful paint under 1.5 s on 4G.
+- **Scalability:** horizontal worker scaling; queue depth alarms; 100 concurrent analyses at launch.
+- **Reliability:** 99.5% uptime; retries for failed modules; partial results shown when one module fails.
+- **Compatibility:** latest two versions of Chrome, Safari, Edge, Firefox; Android and iOS browsers.
+- **Maintainability:** modular detectors behind a common interface so new checks can be added without touching the UI.
+- **Explainability:** every score reproducible from stored module outputs.
+
+## 15. Analytics
+
+Privacy-respecting product analytics (no document content): activation (first result viewed), completion rate by step, drop-off on upload, share and report-download rate, language usage, summary helpfulness thumbs, false-positive and false-negative feedback buttons (“Was this result correct?”), time to result, error rates by module.
+
+## 16. Testing and Datasets
+
+- **Synthetic tamper set:** create genuine sample documents (your own and public sample templates, with fictional data), then tamper them by changing digits, swapping photos, pasting seals, editing PDFs, re-saving and screenshotting. Label ground truth.
+- **Public research datasets** for image forensics benchmarking (for example CASIA, Columbia, CoMoFoD) to validate pixel modules.
+- **Edge cases:** WhatsApp-compressed images, phone photos under poor light, scanned photocopies, rotated or cropped files, password-protected PDFs.
+- **Legal summaries:** 50 sample agreements reviewed by a legal professional for accuracy; translation review by native speakers for each launch language.
+- **Usability:** test with 10 or more users across age groups and languages before launch.
+- **Quality gates:** no release if recall or false-positive targets are missed or if summaries cite non-existent clauses.
+
+## 17. Risks and Mitigations
+
+| Risk | Mitigation |
+| --- | --- |
+| False positives or negatives harm trust | Confidence levels, Inconclusive state, clear limits, feedback loop, threshold tuning |
+| Users treat results as legal proof | Disclaimers, “verify with issuer” next steps, report wording |
+| LLM hallucination in legal summaries | Grounded extraction with clause references, strict schemas, refusal when unsure, human-reviewed test set |
+| Translation errors on legal terms | Keep original term in brackets, glossary, native-speaker review, “report an error” button |
+| Sensitive-data leakage | Minimal retention, masking, encryption, no logging of content |
+| Forgers use the tool to improve fakes | Rate limits, coarse feedback, no exposure of internal thresholds |
+| Template drift (new ID or marks card designs) | Template management in admin, periodic review |
+| Low-quality uploads | On-device quality checks and retake guidance |
+
+## 18. Roadmap (10 weeks, team of 2 to 4)
+
+| Phase | Weeks | Deliverables |
+| --- | --- | --- |
+| 0. Discovery and design | 1 | Finalized PRD, design system, clickable prototype, dataset plan |
+| 1. Verify core | 2 to 4 | Upload, classification, forensics and rules modules, scoring, result screen with heatmap |
+| 2. Legal Simplifier | 5 to 6 | OCR, summary, clauses, risk flags, glossary, 5 languages |
+| 3. Experience and trust | 7 to 8 | Animations, report PDF, history, privacy controls, share link, dark mode, accessibility pass |
+| 4. Hardening and launch | 9 to 10 | Testing against datasets, usability tests, security review, deployment, demo and documentation |
+
+**Stretch after launch:** Ask the Document, compare mode, audio, bulk upload, public API, organization workspace.
+
+## 19. Open Questions
+
+1. Which document types and issuers should get template matching first (CBSE, state boards, specific universities, specific banks)?
+2. Will institutions need on-premise deployment for sensitive documents?
+3. Which official verification APIs can be integrated and under what terms?
+4. Pricing: free for individuals with paid institutional plans, or usage-based for all?
+5. Which regional languages matter most for the first pilot audience?
+
+## 20. Disclaimer Copy (use verbatim in product)
+
+“DocuTrust AI analyzes visual and structural signs of editing and explains documents in simple language. Results are indicators, not proof of authenticity or forgery, and this is not legal advice. For official confirmation, contact the issuing authority or a qualified professional.”
